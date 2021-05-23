@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -30,7 +31,8 @@ func main() {
 	//doUnary(c)
 
 	//doServerStreaming(c)
-	doClientStreaming(c)
+	//doClientStreaming(c)
+	doBiDiStreaming(c)
 
 }
 
@@ -123,4 +125,72 @@ func doClientStreaming(c greetpb.GreetServiceClient) {
 		log.Fatalf("error while receiving response from LongGreet: %v\n", err)
 	}
 	fmt.Printf("LongGreet Response:  %v\n", res)
+}
+
+func doBiDiStreaming(c greetpb.GreetServiceClient) {
+	fmt.Println("Starting to do a BiDi Streaming RPC...")
+	var wg sync.WaitGroup
+
+	reqs := []*greetpb.GreetEveryoneRequest{
+		&greetpb.GreetEveryoneRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "Segun",
+			},
+		}, &greetpb.GreetEveryoneRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "Paul",
+			},
+		}, &greetpb.GreetEveryoneRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "Dorcas",
+			},
+		}, &greetpb.GreetEveryoneRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "Deborah",
+			},
+		}, &greetpb.GreetEveryoneRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "Favour",
+			},
+		},
+	}
+
+	// We create a stream by invoking the client
+	stream, err := c.GreetEveryone(context.Background())
+	if err != nil {
+		log.Fatalf("Error while creating stream: %v\n", err)
+		return
+	}
+
+	// We send a bunch of messages from the client (go routine)
+	wg.Add(1)
+	go func() {
+		// function to send a bunch of messages
+		for _, req := range reqs {
+			fmt.Printf("Sending message: %v\n", req)
+			stream.Send(req)
+			time.Sleep(1 * time.Second)
+		}
+		stream.CloseSend()
+	}()
+
+	// We receive a bunch of messages from the client (go routine)
+	go func(wg *sync.WaitGroup) {
+		// function to receive a bunch of messages
+		for {
+			res, err := stream.Recv()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				log.Fatalf("Error while receiving: %v\n", err)
+				break
+			}
+			fmt.Printf("Received: %v\n", res.GetResult())
+		}
+		wg.Done()
+	}(&wg)
+
+	// block until everything is done
+	wg.Wait()
 }
