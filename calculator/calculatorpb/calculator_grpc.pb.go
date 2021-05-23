@@ -22,8 +22,12 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CalculateServiceClient interface {
+	// Unary
 	Sum(ctx context.Context, in *SumRequest, opts ...grpc.CallOption) (*SumResponse, error)
+	// Server streaming
 	PrimeNumberDecomposition(ctx context.Context, in *PrimeNumberDecompositionRequest, opts ...grpc.CallOption) (CalculateService_PrimeNumberDecompositionClient, error)
+	// Client streaming
+	ComputeAverage(ctx context.Context, opts ...grpc.CallOption) (CalculateService_ComputeAverageClient, error)
 }
 
 type calculateServiceClient struct {
@@ -75,12 +79,50 @@ func (x *calculateServicePrimeNumberDecompositionClient) Recv() (*PrimeNumberDec
 	return m, nil
 }
 
+func (c *calculateServiceClient) ComputeAverage(ctx context.Context, opts ...grpc.CallOption) (CalculateService_ComputeAverageClient, error) {
+	stream, err := c.cc.NewStream(ctx, &CalculateService_ServiceDesc.Streams[1], "/calculator.CalculateService/ComputeAverage", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &calculateServiceComputeAverageClient{stream}
+	return x, nil
+}
+
+type CalculateService_ComputeAverageClient interface {
+	Send(*ComputeAverageRequest) error
+	CloseAndRecv() (*ComputeAverageResponse, error)
+	grpc.ClientStream
+}
+
+type calculateServiceComputeAverageClient struct {
+	grpc.ClientStream
+}
+
+func (x *calculateServiceComputeAverageClient) Send(m *ComputeAverageRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *calculateServiceComputeAverageClient) CloseAndRecv() (*ComputeAverageResponse, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(ComputeAverageResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // CalculateServiceServer is the server API for CalculateService service.
 // All implementations must embed UnimplementedCalculateServiceServer
 // for forward compatibility
 type CalculateServiceServer interface {
+	// Unary
 	Sum(context.Context, *SumRequest) (*SumResponse, error)
+	// Server streaming
 	PrimeNumberDecomposition(*PrimeNumberDecompositionRequest, CalculateService_PrimeNumberDecompositionServer) error
+	// Client streaming
+	ComputeAverage(CalculateService_ComputeAverageServer) error
 	mustEmbedUnimplementedCalculateServiceServer()
 }
 
@@ -93,6 +135,9 @@ func (UnimplementedCalculateServiceServer) Sum(context.Context, *SumRequest) (*S
 }
 func (UnimplementedCalculateServiceServer) PrimeNumberDecomposition(*PrimeNumberDecompositionRequest, CalculateService_PrimeNumberDecompositionServer) error {
 	return status.Errorf(codes.Unimplemented, "method PrimeNumberDecomposition not implemented")
+}
+func (UnimplementedCalculateServiceServer) ComputeAverage(CalculateService_ComputeAverageServer) error {
+	return status.Errorf(codes.Unimplemented, "method ComputeAverage not implemented")
 }
 func (UnimplementedCalculateServiceServer) mustEmbedUnimplementedCalculateServiceServer() {}
 
@@ -146,6 +191,32 @@ func (x *calculateServicePrimeNumberDecompositionServer) Send(m *PrimeNumberDeco
 	return x.ServerStream.SendMsg(m)
 }
 
+func _CalculateService_ComputeAverage_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(CalculateServiceServer).ComputeAverage(&calculateServiceComputeAverageServer{stream})
+}
+
+type CalculateService_ComputeAverageServer interface {
+	SendAndClose(*ComputeAverageResponse) error
+	Recv() (*ComputeAverageRequest, error)
+	grpc.ServerStream
+}
+
+type calculateServiceComputeAverageServer struct {
+	grpc.ServerStream
+}
+
+func (x *calculateServiceComputeAverageServer) SendAndClose(m *ComputeAverageResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *calculateServiceComputeAverageServer) Recv() (*ComputeAverageRequest, error) {
+	m := new(ComputeAverageRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // CalculateService_ServiceDesc is the grpc.ServiceDesc for CalculateService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -163,6 +234,11 @@ var CalculateService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "PrimeNumberDecomposition",
 			Handler:       _CalculateService_PrimeNumberDecomposition_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "ComputeAverage",
+			Handler:       _CalculateService_ComputeAverage_Handler,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "calculator/calculatorpb/calculator.proto",
