@@ -1,0 +1,30 @@
+syntax="proto3";
+
+package calculator;
+option go_package="github.com/sheghun/go-grpc/calculator/calculatorpb";
+
+message Sum {
+  uint32 a = 1;
+  uint32 b = 2;
+}
+
+message SumRequest {
+  Sum sum = 1;
+}
+
+message SumResponse {
+  uint32 result = 1;
+}
+
+message PrimeNumberDecompositionRequest {
+  uint32 number = 1;
+}
+
+message PrimeNumberDecompositionResponse {
+  uint32 result = 1;;
+}
+
+service CalculateService {
+  rpc Sum(SumRequest) returns (SumResponse) {}
+  rpc PrimeNumberDecomposition(PrimeNumberDecompositionRequest) returns (stream PrimeNumberDecompositionResponse) {}
+}
