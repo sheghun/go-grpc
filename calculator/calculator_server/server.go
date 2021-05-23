@@ -59,7 +59,7 @@ func (*server) PrimeNumberDecomposition(req *calculatorpb.PrimeNumberDecompositi
 
 	for N > 1 {
 		time.Sleep(1 * time.Second)
-		if N % k == 0 {
+		if N%k == 0 {
 			res := &calculatorpb.PrimeNumberDecompositionResponse{
 				Result: k,
 			}
@@ -68,7 +68,7 @@ func (*server) PrimeNumberDecomposition(req *calculatorpb.PrimeNumberDecompositi
 				fmt.Errorf("error occurred when streaming data %v\n", err)
 				return err
 			}
-			N = N/k
+			N = N / k
 			continue
 		}
 		k = k + 1
@@ -85,13 +85,37 @@ func (*server) ComputeAverage(stream calculatorpb.CalculateService_ComputeAverag
 		if err != nil {
 			if err == io.EOF {
 				return stream.SendAndClose(&calculatorpb.ComputeAverageResponse{
-					Result: nums/counter,
+					Result: nums / counter,
 				})
 			}
 			log.Fatalf("error while reading client stream %v\n", err)
 		}
 		nums += float32(req.GetNumber())
 		counter++
+	}
+
+	return nil
+}
+
+func (*server) FindMaximum(stream calculatorpb.CalculateService_FindMaximumServer) error {
+	fmt.Println("FindMaximum was invoked using RPC...")
+
+	maxNum := int32(0)
+	for {
+		req, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			log.Fatalf("error while reading client: %v", err)
+			return err
+		}
+		if maxNum < req.GetNumber() {
+			maxNum = req.GetNumber()
+			stream.Send(&calculatorpb.FindMaximumResponse{
+				Result: maxNum,
+			})
+		}
 	}
 
 	return nil

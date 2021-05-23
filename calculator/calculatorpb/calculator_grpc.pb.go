@@ -28,6 +28,8 @@ type CalculateServiceClient interface {
 	PrimeNumberDecomposition(ctx context.Context, in *PrimeNumberDecompositionRequest, opts ...grpc.CallOption) (CalculateService_PrimeNumberDecompositionClient, error)
 	// Client streaming
 	ComputeAverage(ctx context.Context, opts ...grpc.CallOption) (CalculateService_ComputeAverageClient, error)
+	// BiDi streaming
+	FindMaximum(ctx context.Context, opts ...grpc.CallOption) (CalculateService_FindMaximumClient, error)
 }
 
 type calculateServiceClient struct {
@@ -113,6 +115,37 @@ func (x *calculateServiceComputeAverageClient) CloseAndRecv() (*ComputeAverageRe
 	return m, nil
 }
 
+func (c *calculateServiceClient) FindMaximum(ctx context.Context, opts ...grpc.CallOption) (CalculateService_FindMaximumClient, error) {
+	stream, err := c.cc.NewStream(ctx, &CalculateService_ServiceDesc.Streams[2], "/calculator.CalculateService/FindMaximum", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &calculateServiceFindMaximumClient{stream}
+	return x, nil
+}
+
+type CalculateService_FindMaximumClient interface {
+	Send(*FindMaximumRequest) error
+	Recv() (*FindMaximumResponse, error)
+	grpc.ClientStream
+}
+
+type calculateServiceFindMaximumClient struct {
+	grpc.ClientStream
+}
+
+func (x *calculateServiceFindMaximumClient) Send(m *FindMaximumRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *calculateServiceFindMaximumClient) Recv() (*FindMaximumResponse, error) {
+	m := new(FindMaximumResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // CalculateServiceServer is the server API for CalculateService service.
 // All implementations must embed UnimplementedCalculateServiceServer
 // for forward compatibility
@@ -123,6 +156,8 @@ type CalculateServiceServer interface {
 	PrimeNumberDecomposition(*PrimeNumberDecompositionRequest, CalculateService_PrimeNumberDecompositionServer) error
 	// Client streaming
 	ComputeAverage(CalculateService_ComputeAverageServer) error
+	// BiDi streaming
+	FindMaximum(CalculateService_FindMaximumServer) error
 	mustEmbedUnimplementedCalculateServiceServer()
 }
 
@@ -138,6 +173,9 @@ func (UnimplementedCalculateServiceServer) PrimeNumberDecomposition(*PrimeNumber
 }
 func (UnimplementedCalculateServiceServer) ComputeAverage(CalculateService_ComputeAverageServer) error {
 	return status.Errorf(codes.Unimplemented, "method ComputeAverage not implemented")
+}
+func (UnimplementedCalculateServiceServer) FindMaximum(CalculateService_FindMaximumServer) error {
+	return status.Errorf(codes.Unimplemented, "method FindMaximum not implemented")
 }
 func (UnimplementedCalculateServiceServer) mustEmbedUnimplementedCalculateServiceServer() {}
 
@@ -217,6 +255,32 @@ func (x *calculateServiceComputeAverageServer) Recv() (*ComputeAverageRequest, e
 	return m, nil
 }
 
+func _CalculateService_FindMaximum_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(CalculateServiceServer).FindMaximum(&calculateServiceFindMaximumServer{stream})
+}
+
+type CalculateService_FindMaximumServer interface {
+	Send(*FindMaximumResponse) error
+	Recv() (*FindMaximumRequest, error)
+	grpc.ServerStream
+}
+
+type calculateServiceFindMaximumServer struct {
+	grpc.ServerStream
+}
+
+func (x *calculateServiceFindMaximumServer) Send(m *FindMaximumResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *calculateServiceFindMaximumServer) Recv() (*FindMaximumRequest, error) {
+	m := new(FindMaximumRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // CalculateService_ServiceDesc is the grpc.ServiceDesc for CalculateService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -238,6 +302,12 @@ var CalculateService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "ComputeAverage",
 			Handler:       _CalculateService_ComputeAverage_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "FindMaximum",
+			Handler:       _CalculateService_FindMaximum_Handler,
+			ServerStreams: true,
 			ClientStreams: true,
 		},
 	},
